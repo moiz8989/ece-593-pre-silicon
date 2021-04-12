@@ -74,9 +74,9 @@ always_ff@(posedge clk) begin
 end
 
 // rate logic
-always_ff@(posedge clk) begin
+always_ff@(posedge clk) 
 	clk_half <= clk;
-always_ff@(posedge clk_half) begin
+always_ff@(posedge clk_half)
 	clk_quarter <= clk_half;
 
 // clock select function
