@@ -1,10 +1,13 @@
 //v5
-module ats21_rm(input logic clk,reset,req, input logic [15:0]ctrlA,ctrlB, output logic ready, output logic [1:0]stat, output logic [23:0]data);
-
-  logic [0:7] CR_bits;
+module ats21_rm(input logic clk,reset,req, input logic [15:0]ctrlA,ctrlB, output logic ready, output logic stat[2], output logic data[24]);
+// meaning: control register
+logic [0:7] CR_bits;
 //logic [15:0] base_clk [16];
-  logic [15:0] base_clk;
-logic [15:0] alarm_timer [24];
+  logic [15:0] base_clk[16];
+  logic [15:0] alarm_timer[24];
+  // meaning:
+	logic clk_en[16];
+logic at_en[24];
 //bit [31:0] CA_clk,CA_clk_en,CA_at,CA_at_en;
 //bit [31:0] CB_clk,CB_clk_en,CB_at,CB_at_en;
 //int i,j;
@@ -13,18 +16,21 @@ logic [15:0] alarm_timer [24];
 bit load_upper;
 bit [31:0] ctrlA_32bits,ctrlB_32bits;
 always@(posedge clk)
-if (load_upper==0 && req && ready && CR_bits[7])
-  begin
+  if (!load_upper && req && ready && CR_bits[7]) begin
 	ctrlA_32bits[31:16] <= ctrlA;
 	ctrlB_32bits[31:16] <= ctrlB;
-	load_upper       <= 1'b1;
+	// load_upper       <= 1'b1;
   end
-else
-begin
-  ctrlA_32bits[15:0] <= ctrlA;
-  ctrlB_32bits[15:0] <= ctrlB;
-  load_upper       <= 1'b0;
+else if(load_upper && req && ready && CR_bits[7]) begin
+        ctrlA_32bits[15:0] <= ctrlA;
+        ctrlB_32bits[15:0] <= ctrlB;
+  // load_upper       <= 1'b0;
 end
+else begin
+  ctrlA_32bits <= ctrlA_32bits;
+  ctrlB_32bits <= ctrlB_32bits;	
+end
+	
 //////////////////////////////load logic end////////////////////////////////////////////////  
 
 ///////////////////////////// reset logic start////////////////////////////////////////////
@@ -32,33 +38,42 @@ always_ff@(posedge clk)
 begin
   if(reset)
 	begin
-	  ready <= 1'b0;
-	  CR_bits <= 'b0;
-	  //stat???????????
-	  //foreach(base_clk[i])
-	  // base_clk[i] <= 'b0;
-	  //foreach(alarm_timer[i]) -----?
-	  //alarm_timer[i] <= 'b0; -----?
-	  foreach(data[i])
-		data[i] <= 'b0;
+	  ready   <= 1'b0;
+	  CR_bits <= '0;
+	  stat    <= '0;
+	  data    <= '0;
+          foreach(base_clk[i])
+	    base_clk[i] <= '0;
+	  foreach(alarm_timer[i]) //-----?
+	    alarm_timer[i] <= '0; //-----?
+		
 	end
   else
-	ready <= 1'b1;
+	ready <= ready; //TODO: ready == 1 always if not reset???
+	CR_bits <= CR_bits;
+	stat    <= stat;
+	data    <= data;
+        foreach(base_clk[i])
+	   base_clk[i] <= base_clk[i];
+	foreach(alarm_timer[i]) //-----?
+	   alarm_timer[i] <= alarm_timer[i]; //-----?
 end
 ///////////////////////////// reset logic end////////////////////////////////////////////
 typedef enum bit[2:0] {
-no_op = 3'b000,
-set_clk = 3'b001,
-clk_ed = 3'b010,
-set_mode = 3'b011,
-set_alarm = 3'b101,
-set_timer = 3'b110,
-at_ed = 3'b111} opcode;
+  nop     = 3'b000,
+  set_clk = 3'b001,
+  clk_en  = 3'b010,
+  set_mode = 3'b011,
+  set_alarm = 3'b101,
+  set_timer = 3'b110,
+  at_en = 3'b111
+} opcode_t;
 
-opcode op_A,op_B;
+opcode_t op_A,op_B;
 
 always_comb
 begin
+  fork
   case(ctrlA_32bits[31:29])
 	3'b000: op_A = no_op;// -----
 	3'b001: op_A = set_clk;
@@ -77,10 +92,10 @@ begin
 	3'b110: op_B = set_timer;
 	3'b111: op_B = at_ed;
   endcase
+  join
 end
 
-logic clk_en[16];
-logic at_en[24];
+
 
 always_ff@(posedge clk)
 begin 
