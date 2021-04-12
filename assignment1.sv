@@ -13,6 +13,7 @@ logic at_en[24];
 	
 logic [1:0] rateA, rateB;
 logic [1:0] start_valA, start_valB;
+logic [3:0] base_clk_numA, base_clk_numB;
 //bit [31:0] CA_clk,CA_clk_en,CA_at,CA_at_en;
 //bit [31:0] CB_clk,CB_clk_en,CB_at,CB_at_en;
 //int i,j;
@@ -104,7 +105,12 @@ always_comb begin
 	start_valA = ctrlA_32bits[15:0];
 	start_valB = ctrlB_32bits[15:0];
 end
-		
+
+// clock # - base clock select logic
+always_comb begin	
+	base_clk_numA = ctrlA_32bits[28:25];
+	base_clk_numB = ctrlB_32bits[28:25];
+end
 	
 typedef enum bit[2:0] {
   nop     = 3'b000,
@@ -153,9 +159,10 @@ begin
 	        end
 	    set_clk: 
 	        begin
-		        if(ctrlA_32bits[23:22] == 2'b00 && clk_en[ctrlA_32bits[28:25]]==1'b1 )
-		            begin
-                                         base_clk <= ctrlA_32bits[15:0];
+		        //if(ctrlA_32bits[23:22] == 2'b00 && clk_en[ctrlA_32bits[28:25]]==1'b1 )
+		          //  begin
+                            //             base_clk <= ctrlA_32bits[15:0];
+			
                       $display("vlaue ofvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv clk =%d",base_clk);
 			         /*forever
 			         @(posedge clk)
