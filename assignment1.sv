@@ -13,18 +13,21 @@ logic [15:0] alarm_timer [24];
 bit load_upper;
 bit [31:0] ctrlA_32bits,ctrlB_32bits;
 always@(posedge clk)
-if (load_upper==0 && req && ready && CR_bits[7])
-  begin
+  if (!load_upper && req && ready && CR_bits[7]) begin
 	ctrlA_32bits[31:16] <= ctrlA;
 	ctrlB_32bits[31:16] <= ctrlB;
-	load_upper       <= 1'b1;
+	// load_upper       <= 1'b1;
   end
-else
-begin
-  ctrlA_32bits[15:0] <= ctrlA;
-  ctrlB_32bits[15:0] <= ctrlB;
-  load_upper       <= 1'b0;
+else if(load_upper && req && ready && CR_bits[7]) begin
+        ctrlA_32bits[15:0] <= ctrlA;
+        ctrlB_32bits[15:0] <= ctrlB;
+  // load_upper       <= 1'b0;
 end
+else begin
+  ctrlA_32bits <= ctrlA_32bits;
+  ctrlB_32bits <= ctrlB_32bits;	
+end
+	
 //////////////////////////////load logic end////////////////////////////////////////////////  
 
 ///////////////////////////// reset logic start////////////////////////////////////////////
