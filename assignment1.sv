@@ -7,7 +7,7 @@ module ats21_rm(input logic clk,reset,req, input logic [15:0]ctrlA,ctrlB, output
   logic [15:0] alarm_timer[24];
   // meaning:
 logic clk_en[16];
-logic clk_half, clk_quarter, clk_sel;
+logic clk_half, clk_quarter, clk_selA, clk_selB;
 logic at_en[24];
 	
 	
@@ -79,14 +79,20 @@ always_ff@(posedge clk)
 always_ff@(posedge clk_half)
 	clk_quarter <= clk_half;
 
-// clock select function
-// function void clock_select(input logic [1:0] rate);
+// clock select
+// rate A
 always_comb begin
-	if(rateA == 0 && rateB == 0)        clk_sel = clk;
-	else if(rateA == 1 && rateB == 1)   clk_sel = clk_half;
-	else if(rateA == 2 && rateB == 2)   clk_sel = clk_quarter;
-	else                                clk_sel = clk;	
-// endfunction : clock_select
+	if(rateA == 0)        clk_selA = clk;
+	else if(rateA == 1)   clk_selA = clk_half;
+	else if(rateA == 2)   clk_selA = clk_quarter;
+	else                  clk_selA = clk;	
+end
+// rate B	
+always_comb begin
+	if(rateA == 0)        clk_selA = clk;
+	else if(rateA == 1)   clk_selA = clk_half;
+	else if(rateA == 2)   clk_selA = clk_quarter;
+	else                  clk_selA = clk;	
 end
 		
 	
