@@ -36,7 +36,8 @@ begin
 	    base_clk[i] <= '0;
 	  foreach(alarm_timer[i]) //-----?
 	    alarm_timer[i] <= '0; //-----?
-		
+	  rateA <= '0;
+	  rateB <= '0;
 	end
   else
 	ready <= ready; //TODO: ready == 1 always if not reset???
@@ -47,6 +48,8 @@ begin
 	   base_clk[i] <= base_clk[i];
 	foreach(alarm_timer[i]) //-----?
 	   alarm_timer[i] <= alarm_timer[i]; //-----?
+	rateA <= rateA;
+	rateB <= rateB;
 end
 ///////////////////////////// reset logic end////////////////////////////////////////////
 
@@ -89,9 +92,9 @@ always_comb begin
 end
 // rate B	
 always_comb begin
-	if(rateA == 0)        clk_selA = clk;
-	else if(rateA == 1)   clk_selA = clk_half;
-	else if(rateA == 2)   clk_selA = clk_quarter;
+	if(rateB == 0)        clk_selA = clk;
+	else if(rateB == 1)   clk_selA = clk_half;
+	else if(rateB == 2)   clk_selA = clk_quarter;
 	else                  clk_selA = clk;	
 end
 		
