@@ -1,13 +1,20 @@
 //v5
 module ats21_rm(input logic clk,reset,req, input logic [15:0]ctrlA,ctrlB, output logic ready, output logic stat[2], output logic data[24]);
 // meaning: control register
-logic [0:7] CR_bits;
+  logic [7:0] CR_bits;
 //logic [15:0] base_clk [16];
   logic [15:0] base_clk[16];
   logic [15:0] alarm_timer[24];
   // meaning:
-	logic clk_en[16];
+logic clk_en[16];
+logic clk_half, clk_quarter, clk_selA, clk_selB;
 logic at_en[24];
+	
+	
+logic [1:0] rateA, rateB;
+logic [1:0] start_valA, start_valB;
+logic [3:0] base_clk_numA, base_clk_numB;
+logic start_countA, start_countB;
 //bit [31:0] CA_clk,CA_clk_en,CA_at,CA_at_en;
 //bit [31:0] CB_clk,CB_clk_en,CB_at,CB_at_en;
 //int i,j;
@@ -15,21 +22,7 @@ logic at_en[24];
 //////////////////////////////load logic start////////////////////////////////////////////////  
 bit load_upper;
 bit [31:0] ctrlA_32bits,ctrlB_32bits;
-always@(posedge clk)
-  if (!load_upper && req && ready && CR_bits[7]) begin
-	ctrlA_32bits[31:16] <= ctrlA;
-	ctrlB_32bits[31:16] <= ctrlB;
-	// load_upper       <= 1'b1;
-  end
-else if(load_upper && req && ready && CR_bits[7]) begin
-        ctrlA_32bits[15:0] <= ctrlA;
-        ctrlB_32bits[15:0] <= ctrlB;
-  // load_upper       <= 1'b0;
-end
-else begin
-  ctrlA_32bits <= ctrlA_32bits;
-  ctrlB_32bits <= ctrlB_32bits;	
-end
+
 	
 //////////////////////////////load logic end////////////////////////////////////////////////  
 
@@ -46,7 +39,10 @@ begin
 	    base_clk[i] <= '0;
 	  foreach(alarm_timer[i]) //-----?
 	    alarm_timer[i] <= '0; //-----?
-		
+	  rateA <= '0;
+	  rateB <= '0;
+	  start_countA <= 0;
+	  start_countB <= 0;
 	end
   else
 	ready <= ready; //TODO: ready == 1 always if not reset???
@@ -57,8 +53,70 @@ begin
 	   base_clk[i] <= base_clk[i];
 	foreach(alarm_timer[i]) //-----?
 	   alarm_timer[i] <= alarm_timer[i]; //-----?
+	rateA <= rateA;
+	rateB <= rateB;
+	start_countA <= start_countA;
+	start_countB <= start_countB;
 end
 ///////////////////////////// reset logic end////////////////////////////////////////////
+
+// opcode logic
+always@(posedge clk)
+	if (!load_upper && req && ready) begin
+	ctrlA_32bits[31:16] <= ctrlA;
+	ctrlB_32bits[31:16] <= ctrlB;
+  end
+	else if(load_upper && req && ready) begin
+        ctrlA_32bits[15:0] <= ctrlA;
+        ctrlB_32bits[15:0] <= ctrlB;
+end
+else begin
+  ctrlA_32bits <= ctrlA_32bits;
+  ctrlB_32bits <= ctrlB_32bits;	
+end
+	
+// status logic
+always_ff@(posedge clk) begin
+	if(req && ctrlA) stat[0] <= 1'b1;
+	else stat[0] <= 1'b0;
+	if(req && ctrlB) stat[1] <= 1'b1;
+	else stat[1] <= 1'b0;
+end
+
+// rate logic
+always_ff@(posedge clk) 
+	clk_half <= clk;
+always_ff@(posedge clk_half)
+	clk_quarter <= clk_half;
+
+// clock select
+// rate A
+always_comb begin
+	if(rateA == 0)        clk_selA = clk;
+	else if(rateA == 1)   clk_selA = clk_half;
+	else if(rateA == 2)   clk_selA = clk_quarter;
+	else                  clk_selA = clk;	
+end
+// rate B	
+always_comb begin
+	if(rateB == 0)        clk_selB = clk;
+	else if(rateB == 1)   clk_selB = clk_half;
+	else if(rateB == 2)   clk_selB = clk_quarter;
+	else                  clk_selB = clk;	
+end
+	
+// start value logic
+always_comb begin
+	start_valA = ctrlA_32bits[15:0];
+	start_valB = ctrlB_32bits[15:0];
+end
+
+// clock # - base clock select logic
+always_comb begin	
+	base_clk_numA = ctrlA_32bits[28:25];
+	base_clk_numB = ctrlB_32bits[28:25];
+end
+	
 typedef enum bit[2:0] {
   nop     = 3'b000,
   set_clk = 3'b001,
@@ -95,6 +153,11 @@ begin
   join
 end
 
+// base clock timer/alarm
+always_ff@(posedge clk_selA) begin
+	if(start_countA) base_clk[base_clk_numA] <= base_clk[base_clk_numA] + 1;
+	else base_clk[base_clk_numA] <= base_clk[base_clk_numA];
+end
 
 
 always_ff@(posedge clk)
@@ -106,15 +169,18 @@ begin
 	        end
 	    set_clk: 
 	        begin
-		        if(ctrlA_32bits[23:22] == 2'b00 && clk_en[ctrlA_32bits[28:25]]==1'b1 )
-		            begin
-                      base_clk <= ctrlA_32bits[15:0];
+		        //if(ctrlA_32bits[23:22] == 2'b00 && clk_en[ctrlA_32bits[28:25]]==1'b1 )
+		          //  begin
+                            //             base_clk <= ctrlA_32bits[15:0];
+			
                       $display("vlaue ofvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv clk =%d",base_clk);
 			         /*forever
 			         @(posedge clk)
 			         //base_clk[ctrlA_32bits[28:25]]++;
                      base_clk[ctrlA_32bits[28:25]]++;*/
-                      
+			// load the start value
+			base_clk[base_clk_numA] <= set_valA; start_countA <= 1;
+			
 		            end
 		        else if(ctrlA_32bits[23:22] == 2'b01 && clk_en[ctrlA_32bits[28:25]]==1'b1 )
 		            begin
@@ -138,7 +204,7 @@ begin
 	        end
 	    set_mode:
 	        begin
-		     CR_bits <= {ctrlA_32bits[28:24],3'b000};
+			CR_bits <= {3'b000, ctrlA_32bits[28:24]};
 	        end
 	    set_alarm:
 	        begin
